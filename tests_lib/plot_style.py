@@ -1,7 +1,6 @@
 ########################################################
 """
-    This file is part of the MOPS-Hub project.
-    Author: Ahmed Qamesh (University of Wuppertal)
+    Author: Ahmed Qamesh
     email: ahmed.qamesh@cern.ch  
     Date: 29.01.2022
 """

@@ -8,24 +8,14 @@
 ########################################################
 from __future__ import division
 import numpy as np
-from numpy import loadtxt, arange
-
 from scipy.optimize import curve_fit
-from mpl_toolkits.mplot3d import Axes3D
-from mpl_toolkits.mplot3d import Axes3D  # @UnusedImport
 from matplotlib.ticker import FormatStrFormatter
 from math import pi, cos, sin
-from scipy.linalg import norm
-import os
 from matplotlib.pyplot import *
 import pandas as pd
-
 import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1.anchored_artists import AnchoredDrawingArea
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from .analysis_utils      import AnalysisUtils
 from collections import OrderedDict
-from scipy import interpolate
 from .logger_main   import Logger
 from .plot_style import *
 import logging

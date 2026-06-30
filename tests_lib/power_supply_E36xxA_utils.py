@@ -8,20 +8,10 @@
 ########################################################
 #pip install pyvisa
 #The script is dedicated for Agilent E364xA  https://www.tme.eu/Document/9f3996689f24777703b84ff64b156944/E3646-90001.pdf
-import math
-import random # For randint
-import sys # For sys.argv and sys.exit
 import numpy as np
 import time
-import os
-import binascii
-import struct
-import serial
 import time
-import csv
 import pyvisa
-from datetime import datetime
-import atexit
 import logging
 from .logger_main   import Logger
 log_format = '%(log_color)s[%(levelname)s]  - %(name)s -%(message)s'
