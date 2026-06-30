@@ -1,4 +1,4 @@
-# Power Supply Remote Control (PyVISA + Click + YAML)
+# Power Supply Remote Control
 
 A Python-based CLI tool for controlling and testing programmable power supplies (e.g., Keysight/Agilent E36xxA series) via PyVISA.  
 The system is fully configurable using YAML and supports device discovery, initialization, voltage/current configuration, and automated test execution.
