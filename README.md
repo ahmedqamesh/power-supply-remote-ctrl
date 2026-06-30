@@ -3,17 +3,6 @@
 A Python-based CLI tool for controlling and testing programmable power supplies (e.g., Keysight/Agilent E36xxA series) via PyVISA.  
 The system is fully configurable using YAML and supports device discovery, initialization, voltage/current configuration, and automated test execution.
 
----
-## Features
-
-- 🔌 VISA-based instrument communication (PyVISA)
-- ⚙️ YAML-driven configuration (no hardcoded parameters)
-- 🧪 Modular execution modes (list, init, configure, scan, sample)
-- ⚡ Multi-output support (e.g., out1 / out2)
-- 📊 Automated parameter scanning and sampling
-- 🧰 Click-based CLI interface
-
----
 
 ## Project Structure
 ```bash
@@ -40,8 +29,7 @@ source env/bin/activate
 pip install -r requirements.txt
 ```
 
-###Configuration (YAML)
-
+### Configuration (YAML)
 
 Example configs/ps_E3631A.yaml:
 ```yaml
