@@ -82,5 +82,4 @@ python test_power_supply.py --config configs/ps.yaml --set
 # Step 4: run scan
 python test_power_supply.py --config configs/ps.yaml --scan
 
-
 ```

@@ -1,0 +1,22 @@
+device:
+  msg: true
+  identification_to_check: "E3631A"
+  resource: "ASRL/dev/ttyUSB1::INSTR"
+  outname: "power_supply"
+
+outputs:
+  out1:
+    active: True
+    name: "P6V" 
+    voltage: "5.0"
+    current_limit: "1.0"
+
+  out2:
+    active: False
+    name: "P25V" 
+    voltage: "0.0"
+    current_limit: "0.5"
+
+test:
+  num_samples: 5
+  measure_output: 1
