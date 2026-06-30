@@ -19,7 +19,7 @@ import pandas as pd
 from scipy import interpolate
 
 log_format = '%(log_color)s[%(levelname)s]  - %(name)s -%(message)s'
-log_call = Logger(log_format=log_format, name="DC\DC", console_loglevel=logging.INFO, logger_file=False)
+log_call = Logger(log_format=log_format, name="Analysis", console_loglevel=logging.INFO, logger_file=False)
 logger = log_call.setup_main_logger()#
 
 rootdir = os.path.dirname(os.path.abspath(__file__))
@@ -69,24 +69,47 @@ def load_data(data_file = None,module_name = NotImplemented, file_name =None ):
     data_frame = AnalysisUtils().check_last_row(data_frame = data_frame,column = df_headers[-1])
     return data_frame, df_headers
 
+def should_use_raw_values(data_frame=None):
+    if data_frame is None or data_frame.empty:
+        return True
+
+    timestamps = pd.to_datetime(data_frame['TimeStamp'], format='%Y-%m-%d_%H:%M:%S', errors='coerce')
+    timestamps = timestamps.dropna()
+    if timestamps.empty:
+        return True
+
+    span_seconds = (timestamps.max() - timestamps.min()).total_seconds()
+    return span_seconds < 3600
+
+
 def extract_data_info(data_file = None,module_name = None, file_name = None, min_scale = None):
-    data_frame, df_headers = load_data(data_file = data_file, module_name = module_name, file_name =file_name) 
+    data_frame, df_headers = load_data(data_file = data_file, module_name = module_name, file_name =file_name)
 
     day, unique_days = AnalysisUtils().getDay(data_frame.TimeStamp)
-    hours, unique_hours,unique_minutes = AnalysisUtils().getHours(TimeStamps = data_frame.TimeStamp, min_scale =min_scale, device = "power_card")
-    hourlyAverageValues = [0 for i in range(len(df_headers))]
-    hourlySTDValues = [0 for i in range(len(df_headers))]
+    hours, unique_hours, unique_minutes = AnalysisUtils().getHours(TimeStamps=data_frame.TimeStamp, min_scale=min_scale, device="power_card")
+    hourlyAverageValues = [0 for _ in range(len(df_headers))]
+    hourlySTDValues = [0 for _ in range(len(df_headers))]
     new_headers = []
-    for pos,column in enumerate(df_headers):
+
+    use_raw_values = should_use_raw_values(data_frame)
+
+    for pos, column in enumerate(df_headers):
         if pos > 0 and pos < len(df_headers):
-            hourlyAverageValues[pos-1], hourlySTDValues[pos-1] = AnalysisUtils().get_hourly_average_value(data_frame = data_frame , 
-                                                                                                          column = column,
-                                                                                                          min_scale = min_scale,
-                                                                                                          unique_days = unique_days)
-            
+            if use_raw_values:
+                values = pd.to_numeric(data_frame[column], errors='coerce').dropna().to_numpy()
+                hourlyAverageValues[pos-1] = values
+                hourlySTDValues[pos-1] = np.zeros_like(values, dtype=float)
+            else:
+                hourlyAverageValues[pos-1], hourlySTDValues[pos-1] = AnalysisUtils().get_hourly_average_value(
+                    data_frame=data_frame,
+                    column=column,
+                    min_scale=min_scale,
+                    unique_days=unique_days,
+                )
+
             new_headers = np.append(new_headers, column)
-    
-    return data_frame, new_headers,hourlyAverageValues, hourlySTDValues,day, unique_days
+
+    return data_frame, new_headers, hourlyAverageValues, hourlySTDValues, day, unique_days
 
  
         
@@ -110,21 +133,26 @@ def load_power_data(data_file = None,module_name = None, file_name = None,min_sc
     data_frame, new_headers,hourlyAverageValues, hourlySTDValues,day, unique_days = extract_data_info(data_file = data_file, module_name = module_name, file_name =file_name, min_scale = min_scale)
 
     f = 1000  # to convert to mA
-    
-    time      = data_frame.iloc[:, 0].astype(str)
-    elabsed   = data_frame.iloc[:, 1].astype(float)
 
-    Usin1  = data_frame.iloc[:, 2].astype(float)
-    eUsin1  = data_frame.iloc[:, 3].astype(float)
-    Iin1   = data_frame.iloc[:, 6].astype(float) * f
-    eIin1  = data_frame.iloc[:, 7].astype(float) * f
-       
-    hours, unique_hours,unique_minutes = AnalysisUtils().getHours(TimeStamps = data_frame.TimeStamp, min_scale =min_scale, device = "power_card")
+    time = data_frame.iloc[:, 0].astype(str)
+    elabsed = data_frame.iloc[:, 1].astype(float)
 
-    if min_scale == "min_scale": period = np.arange(len(unique_minutes)) 
-    else:  period = np.arange(len(unique_hours))
-    
-    return elabsed, Usin1, eUsin1, Iin1, eIin1 ,new_headers,hourlyAverageValues, hourlySTDValues,day, period
+    Usin1 = data_frame.iloc[:, 2].astype(float)
+    eUsin1 = data_frame.iloc[:, 3].astype(float)
+    Iin1 = data_frame.iloc[:, 6].astype(float) * f
+    eIin1 = data_frame.iloc[:, 7].astype(float) * f
+
+    hours, unique_hours, unique_minutes = AnalysisUtils().getHours(TimeStamps=data_frame.TimeStamp, min_scale=min_scale, device="power_card")
+
+    if min_scale == "min_scale":
+        period = np.arange(len(unique_minutes))
+    else:
+        period = np.arange(len(unique_hours))
+
+    if len(data_frame) <= 3 or should_use_raw_values(data_frame):
+        period = np.arange(len(data_frame))
+
+    return elabsed, Usin1, eUsin1, Iin1, eIin1, new_headers, hourlyAverageValues, hourlySTDValues, day, period
 
 
 def plot_power_supply_parameters(modules_name=None,
@@ -135,16 +163,23 @@ def plot_power_supply_parameters(modules_name=None,
     logger.info(f"Plotting Test Results {modules_name}")
     fig1, ax1 = plt.subplots() 
     fig2, ax2 = plt.subplots() 
+
+    if min_scale == "min_scale":
+        time_label = "Time [Min]"
+    elif min_scale == "hour_scale":
+        time_label = "Time [Hour]"
+    else:
+        time_label = "Time [Sec]"
    
     ax1.grid(True)
     ax1.set_ylabel("$V_{Supply}$ [V]")#("Output Voltage $V_{out}$[V]")
-    ax1.set_xlabel("Time [Min]")#("Input Voltage $V_{in}$ [V]")
+    ax1.set_xlabel(time_label)#("Input Voltage $V_{in}$ [V]")
     ax1.autoscale(enable=True, axis='x', tight=None)
     if text_enable: ax1.set_title(f"Supply Voltage for the FPGA during Proton Irradiation")
     
     ax2.grid(True)
     ax2.set_ylabel("$I_{Supply}$ [mA]")#("Input Voltage $V_{in}$ [V]")
-    ax2.set_xlabel("Time [Min]")#(r'Current $I$ [mA]')
+    ax2.set_xlabel(time_label)#(r'Current $I$ [mA]')
     if text_enable: ax2.set_title(f"Supply Current for the FPGA during Proton Irradiation")   
 
     for index, (file_name, module_name) in enumerate(zip(files_name, modules_name)):
@@ -161,21 +196,38 @@ def plot_power_supply_parameters(modules_name=None,
             data_file = file_in_path + file_name+".csv"
             file_out_path = data_file[:-4]+".pdf"
            
-        elabsed, Usin1, eUsin1, Iin1, eIin1 ,new_headers,hourlyAverageValues, hourlySTDValues,day, period  = load_power_data(data_file =data_file,module_name = module_name,file_name = file_name,min_scale = min_scale)  
-        delta_I = (max(hourlyAverageValues[5]) - min(hourlyAverageValues[5]))/max(hourlyAverageValues[5])*100
+        elabsed, Usin1, eUsin1, Iin1, eIin1, new_headers, hourlyAverageValues, hourlySTDValues, day, period = load_power_data(
+            data_file=data_file,
+            module_name=module_name,
+            file_name=file_name,
+            min_scale=min_scale,
+        )
+
+        if isinstance(hourlyAverageValues[1], np.ndarray):
+            voltage_series = hourlyAverageValues[1]
+            current_series = hourlyAverageValues[5] * 1000
+            x_values = np.arange(len(voltage_series))
+        else:
+            voltage_series = np.asarray(hourlyAverageValues[1], dtype=float)
+            current_series = np.asarray(hourlyAverageValues[5], dtype=float) * 1000
+            x_values = period
+
+        if np.size(current_series) > 0 and np.any(np.asarray(current_series) != 0):
+            delta_I = (np.max(current_series) - np.min(current_series)) / np.max(current_series) * 100
+        else:
+            delta_I = 0.0
+
         logger.info(f"Output results in: {file_out_path}...")
         logger.report(f'Current Variation = {delta_I} %')
-        
-        #ax1.plot(elabsed,Usin1, label=f"{legend_title}")        
-        #ax1.errorbar(period, hourlyAverageValues[1], yerr=hourlySTDValues[1], color="black", fmt='o' , markerfacecolor='black', markeredgecolor='black')
-        ax1.plot(period,hourlyAverageValues[1], label=f"{legend_title}",marker='o')                  
 
-        #ax2.errorbar(period,hourlyAverageValues[5]*1000, fmt='o', color="black", markerfacecolor='black', markeredgecolor="black")
-        
-        ax2.plot(period,hourlyAverageValues[5]*1000,label=f"{legend_title}",marker='o')   
-        #ax2.plot(elabsed,Iin1, label=f"{legend_title}") 
-        ax1.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))    
-    ax1.set_ylim([min(hourlyAverageValues[1])-0.01, max(hourlyAverageValues[1]) + 0.01])
+        ax1.plot(x_values, voltage_series, label=f"{legend_title}", marker='o')
+        ax2.plot(x_values, current_series, label=f"{legend_title}", marker='o')
+        ax1.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
+
+    voltage_values = np.asarray(hourlyAverageValues[1], dtype=float)
+    current_values = np.asarray(hourlyAverageValues[5], dtype=float) * 1000
+    if voltage_values.size > 0:
+        ax1.set_ylim([np.min(voltage_values) - 0.01, np.max(voltage_values) + 0.01])
     ax1.legend(loc="upper left")
     plt.tight_layout()
     fig1.savefig(file_out_path[:-4]+ "_voltage.pdf", bbox_inches='tight')   
@@ -198,7 +250,7 @@ if __name__ == '__main__':
     # get program arguments
     PdfPages = PdfPages(root_dir+'power_supply_converters.pdf')
     modules_compare = ['output_dir/']
-    files_compare =  ["output_dir/card_power_supply"]
+    files_compare =  ["output_dir/power_supply"]
     plot_power_supply_parameters(modules_name=modules_compare,
                                  files_name=files_compare,
                                  legends= ["Run 7: $\Phi = 1.6 x 10^{10}$ $Proton/cm^2$"],

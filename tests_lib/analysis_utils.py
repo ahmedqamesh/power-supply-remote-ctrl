@@ -264,25 +264,32 @@ class AnalysisUtils(object):
     def get_hourly_average_value(self,data_frame = None, column = None,min_scale = None, unique_days = None,device = "power_card"):
         hourlyAverageValues = []
         hourlySTDValues = []
-        data_for_day_hour = self.get_data_for_day_hour(data_frame = data_frame, device = device)
+        data_for_day_hour = self.get_data_for_day_hour(data_frame=data_frame, device=device)
+
+        if column not in data_for_day_hour.columns:
+            raise KeyError(f"Column '{column}' was not found in the input data")
+
+        data_for_day_hour = data_for_day_hour.copy()
+        data_for_day_hour[column] = pd.to_numeric(data_for_day_hour[column], errors='coerce')
+
         for target_day in unique_days:
             condition = (data_for_day_hour['day'] == pd.to_datetime(target_day))
-            
-            data = data_for_day_hour[condition]
-            data = data.apply(pd.to_numeric, errors='coerce')
+            data = data_for_day_hour.loc[condition].copy()
+            if data.empty:
+                continue
+
             if min_scale == "min_scale":
-                hourly_avg = data.groupby(["hour", 'minutes']).agg('mean')
-                hourly_std = data.groupby(["hour", 'minutes']).agg('std')
+                grouped = data.groupby(["hour", 'minutes'], dropna=False)[column]
             else:
-                hourly_avg = data.groupby('hour').agg('mean')
-                hourly_std = data.groupby('hour').agg('std')
-            
-            for hour, avg_value in hourly_avg.iterrows():
-                
-                hourlyAverageValues = np.append(hourlyAverageValues, avg_value[column])
-            for hour, std_value in hourly_std.iterrows():
-                hourlySTDValues = np.append(hourlySTDValues, std_value[column])        
-        return hourlyAverageValues, hourlySTDValues
+                grouped = data.groupby('hour', dropna=False)[column]
+
+            hourly_avg = grouped.mean()
+            hourly_std = grouped.std()
+
+            hourlyAverageValues.extend(hourly_avg.tolist())
+            hourlySTDValues.extend(hourly_std.tolist())
+
+        return np.asarray(hourlyAverageValues, dtype=float), np.asarray(hourlySTDValues, dtype=float)
     
 
     def getHourlyAverageValue(self,hours =None, data =None, min_scale =None, unique_hours = None,unique_days = None, device = "power_card"):
