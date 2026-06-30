@@ -3,7 +3,7 @@
 # but keep the directory itself (and the .gitkeep placeholder) tracked.
 # Output directory (ignore all generated test results)
 output_dir/
-
+!output_dir
 # Keep folder structure (optional)
 !output_dir/.gitkeep
 
