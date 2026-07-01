@@ -454,5 +454,6 @@ def main(data_dir, output_dir, pattern, legends, scale, overlay,
                     scale_override=scale
                 )
     logger.info(f"Combined PDF → {combined_path}")
+    
 if __name__ == "__main__":
     main()
