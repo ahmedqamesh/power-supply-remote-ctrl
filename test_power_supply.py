@@ -1,6 +1,6 @@
 ########################################################
 """
-    Author: Ahmed Qamesh (University of Wuppertal)
+    Author: Ahmed Qamesh
     email: ahmed.qamesh@cern.ch  
     Date: 29.08.2023
 """
@@ -49,10 +49,11 @@ def scan_supply_paramters(instrument = None,
                       output1=None,
                       output2=None,
                       voltage1 = None,
-                      voltage2 = None):
+                      voltage2 = None,
+                      num_samples = 3):
     logger.info(f"Scanning Supply Parameters...")
     file_headers =['TimeStamp','elabsed_time',"Usin1(V)","eUsin1(V)","Usin2(V)","eUsin2(V)","Isin1(A)","eIsin1(A)","Isin2(A)","eIsin2(A)"]
-    power_card_csv_writer, power_card_csv_file = AnalysisUtils().build_data_base(fieldnames=file_headers, outputname = outname, directory=output_dir)        
+    ps_csv_writer, ps_csv_file = AnalysisUtils().build_data_base(fieldnames=file_headers, outputname = outname, directory=output_dir)        
     monitoringTime = time.time()
     i = 0
     # Register the termination signal handler
@@ -61,17 +62,17 @@ def scan_supply_paramters(instrument = None,
         while True:
             i = i+1
             if output1:
-                voltage_mean_1, voltage_std_1,current_mean_1, current_std_1 = E36xxA_lib.set_nomianl_voltage(instrument = instrument, voltage= voltage1,  output=output1)
+                voltage_mean_1, voltage_std_1,current_mean_1, current_std_1 = E36xxA_lib.set_nomianl_voltage(instrument = instrument, voltage= voltage1,  output=output1,num_samples = num_samples)
             else:
                 voltage_mean_1, voltage_std_1,current_mean_1, current_std_1  = 0.0, 0.0, 0.0, 0.0
             if output2:
-                voltage_mean_2, voltage_std_2,current_mean_2, current_std_2  = E36xxA_lib.set_nomianl_voltage(instrument = instrument,voltage= voltage2,output = output2) 
+                voltage_mean_2, voltage_std_2,current_mean_2, current_std_2  = E36xxA_lib.set_nomianl_voltage(instrument = instrument,voltage= voltage2,output = output2,num_samples = num_samples) 
             else:
                 voltage_mean_2, voltage_std_2,current_mean_2, current_std_2  = 0.0, 0.0, 0.0, 0.0 
             ts = time.time()
             file_time_now = datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
             elapsedtime = ts - monitoringTime      
-            power_card_csv_writer.writerow((str(file_time_now),
+            ps_csv_writer.writerow((str(file_time_now),
                                     str(elapsedtime),
                                     str(voltage_mean_1),
                                     str(voltage_std_1),                                                    
@@ -81,7 +82,7 @@ def scan_supply_paramters(instrument = None,
                                     str(current_std_1),                                                 
                                     str(current_mean_2),
                                     str(current_std_2)))       
-            power_card_csv_file.flush() # Flush the buffer to update the file
+            ps_csv_file.flush() # Flush the buffer to update the file
             time.sleep(timeout)
             print(f"--------------------------------------------------------------------")
     except (KeyboardInterrupt):
@@ -89,9 +90,9 @@ def scan_supply_paramters(instrument = None,
         logger.warning("User interrupted")
         sys.exit(1)      
     finally:
-        E36xxA_lib.set_nomianl_voltage(instrument = instrument, voltage= "0.0", output=output1)
-        E36xxA_lib.set_nomianl_voltage(instrument = instrument,voltage= "0.0",output = output2) 
-        power_card_csv_writer.writerow((str(None),
+        E36xxA_lib.set_nomianl_voltage(instrument = instrument, voltage= "0.0", output=output1,num_samples = num_samples)
+        E36xxA_lib.set_nomianl_voltage(instrument = instrument,voltage= "0.0",output = output2,num_samples = num_samples) 
+        ps_csv_writer.writerow((str(None),
                      str(None),
                      str(None),
                      str(None),
@@ -195,7 +196,8 @@ def main(config, list_devices, init_device,set_voltage, scan_parameters, sample_
             E36xxA_lib.set_nomianl_voltage(
                     instrument=instrument,
                     voltage=cfg_out["voltage"],
-                    output=cfg_out["name"]
+                    output=cfg_out["name"],
+                    num_samples = cfg["test"]["num_samples"]
                 )
 
     if scan_parameters:
@@ -210,7 +212,8 @@ def main(config, list_devices, init_device,set_voltage, scan_parameters, sample_
             output1=output1,
             output2=output2,
             voltage1=cfg["outputs"]["out1"]["voltage"],
-            voltage2=cfg["outputs"]["out2"]["voltage"]
+            voltage2=cfg["outputs"]["out2"]["voltage"],
+            num_samples = cfg["test"]["num_samples"]
         )
 
     if sample_parameters:

@@ -1,7 +1,6 @@
 ########################################################
 """
-    This file is part of the MOPS-Hub project.
-    Author: Ahmed Qamesh (University of Wuppertal)
+    Author: Ahmed Qamesh
     email: ahmed.qamesh@cern.ch  
     Date: 29.01.2022
 """
@@ -16,10 +15,9 @@ import logging
 from .logger_main   import Logger
 log_format = '%(log_color)s[%(levelname)s]  - %(name)s -%(message)s'
 log_call = Logger(log_format=log_format, name="E364xA Lib", console_loglevel=logging.INFO, logger_file=False)
-logger = log_call.setup_main_logger()#
-
-
+logger = log_call.setup_main_logger()
 visa_timeout = 1
+
 def list_available_devices(msg = True, identification_to_check = "E3631A"):
         # Initialize the PyVISA library
         logger.report(f'Listing Available Devices...')
@@ -66,7 +64,6 @@ def initialize_power_devices(resource = None, check = None, identification_to_ch
     manufacturer = idn_response.split(',')[0]
     identification = idn_response.split(',')[1]
     logger.info(f'Available Device: {manufacturer} - {identification}')
-    #instrument.timeout = 10000  # Set a longer timeout (in milliseconds) 
     instrument.write('*RST') # Reset instrument
     instrument.write('SYSTem:REMote') # Reset instrument
     time.sleep(5)
@@ -85,6 +82,7 @@ def get_device_outputs(identification = None):
     else: 
         out1,out2 =  "P6V","P25V" 
     return  out1,out2  
+
 def set_current_limit(instrument = None, max_current = None, output=None):
     # Set the voltage and current for Output 1
     voltage_mean, voltage_std,current_mean, current_std = None, None,None, None
@@ -109,7 +107,8 @@ def set_current_limit(instrument = None, max_current = None, output=None):
 
 def set_nomianl_voltage(instrument = None,
                         voltage= None,
-                        output=None):
+                        output=None,
+                        num_samples=None):
     
     voltage_mean, voltage_std,current_mean, current_std = None, None,None, None
     logger.info(f"Apply Output Voltage[{output}]: {voltage} V")
@@ -126,7 +125,7 @@ def set_nomianl_voltage(instrument = None,
     else: 
         instrument.write(f'APPLy {output} ,{voltage}')
     instrument.write(f'OUTP ON')    
-    voltage_mean, voltage_std,current_mean, current_std  = sample_supply_paramters(instrument= instrument,num_samples = 3 ) 
+    voltage_mean, voltage_std,current_mean, current_std  = sample_supply_paramters(instrument= instrument,num_samples = num_samples) 
     return voltage_mean, voltage_std,current_mean, current_std      
 
 def sample_supply_paramters(instrument = None,num_samples = None):    
